@@ -536,6 +536,7 @@
             assignExecutor: (id, aid) => api.request(`/requests/${id}/assign`, { method: 'PUT', body: JSON.stringify({ assigneeId: aid }) }),
             deleteRequest: (id) => api.request(`/requests/${id}`, { method: 'DELETE' }),
             getWorkshops: () => api.request('/workshops'),
+            getWorkshopsByTechnicalObject: (technicalObjectId) => api.request(`/workshops/by-object/${technicalObjectId}`),
             getTechnologicalUnits: () => api.request('/technologicalunits'),
             getTechnologicalUnitsByWorkshop: (workshopId) => api.request(`/technologicalunits/by-workshop/${workshopId}`),
             getEquipmentInstances: () => api.request('/equipmentinstances'),
@@ -1560,8 +1561,8 @@
                 });
                 equipmentSelect.disabled = false;
 
-                // Загружаем все цеха для выбора
-                const workshops = await api.getWorkshops();
+                // Загружаем только цеха, связанные с выбранным объектом
+                const workshops = await api.getWorkshopsByTechnicalObject(objectId);
                 workshopSelect.innerHTML = '<option value="">Выберите цех</option>';
                 workshops.forEach(ws => {
                     const option = document.createElement('option');
@@ -1612,66 +1613,7 @@
             }
         });
 
-        // Обработка отправки формы создания заявки
-        document.getElementById('createRequestForm')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const formData = {
-                workType: document.getElementById('workType').value,
-                priority: document.getElementById('priority').value,
-                technicalObjectId: parseInt(document.getElementById('technicalObject').value),
-                workshopId: parseInt(document.getElementById('workshop').value),
-                technologicalUnitId: document.getElementById('technologicalUnit').value ?
-                    parseInt(document.getElementById('technologicalUnit').value) : null,
-                equipmentInstanceId: parseInt(document.getElementById('equipmentInstance').value),
-                problemDescription: document.getElementById('problemDescription').value,
-                technicalSpecifications: document.getElementById('technicalSpecifications').value,
-            };
-
-            // Валидация на стороне клиента
-            if (!formData.workType || !formData.priority || !formData.problemDescription) {
-                showErrorAlert('Заполните все обязательные поля (отмечены *)');
-                return;
-            }
-
-            try {
-                // Преобразуем данные в формат API
-                const requestData = {
-                    workType: formData.workType,
-                    priority: formData.priority,
-                    status: 'New',
-                    technicalSpecs: formData.technicalSpecifications,
-                    requirements: formData.problemDescription,
-                    equipmentInstanceId: formData.equipmentInstanceId,
-                    technicalObjectId: formData.technicalObjectId,
-                    workshopId: formData.workshopId,
-                    technologicalUnitId: formData.technologicalUnitId
-                };
-
-                await api.createRequest(requestData);
-                showAlert('Заявка успешно создана!', 'success');
-
-                // Сбрасываем форму
-                document.getElementById('createRequestForm').reset();
-                document.getElementById('technologicalUnit').disabled = true;
-                document.getElementById('workshop').disabled = true;
-                document.getElementById('equipmentInstance').disabled = true;
-
-                // Загружаем обновленный список заявок
-                await loadDashboard();
-
-                // Переходим на страницу всех заявок
-                document.querySelectorAll('.content-section').forEach(s => s.style.display = 'none');
-                document.getElementById('requests-section').style.display = 'block';
-                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                document.querySelector('[data-section="requests"]').classList.add('active');
-
-            } catch (error) {
-                showErrorAlert(error.message || 'Не удалось создать заявку');
-                console.error('Create request error:', error);
-            }
-        });
-
+        
         // Инициализируем форму при загрузке приложения
         document.addEventListener('DOMContentLoaded', () => {
             initializeCreateRequestForm();
